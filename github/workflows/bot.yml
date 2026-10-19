@@ -18,4 +18,4 @@ jobs:
           YOUTUBE_TOKEN_JSON: ${{ secrets.YOUTUBE_TOKEN_JSON }}
           CLIENT_SECRETS_JSON: ${{ secrets.CLIENT_SECRETS_JSON }}
           PUBLISH_MODE: private
-        run: python server_run.py 
+        run: python server_run_v2.py
