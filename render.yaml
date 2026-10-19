@@ -1,0 +1,24 @@
+# Render Blueprint — PREPARATION ONLY. Nothing is deployed yet.
+# This file belongs at the ROOT of the GitHub repo that will hold the bot.
+# Service shape: Cron Job (not a Web Service, not a Background Worker).
+# Why: the bot only needs to run for a few minutes every 4 hours.
+#   - A free Web Service would spin down after 15 min idle and lose local
+#     files (Render docs), so it cannot be trusted for a schedule.
+#   - A Background Worker needs a paid plan (Starter $7/mo and up).
+#   - A Cron Job bills per minute it runs (Render pricing: from $0.00016/min).
+#     ~2-3 min per run x 6 runs/day = roughly a few cents per month, but it
+#     still needs a payment method on file in Render — check before promising $0.
+# Cron schedule is UTC: "0 */4 * * *" = every 4 hours, on the hour.
+services:
+  - type: cron
+    name: islamic-clips44-bot
+    env: docker
+    dockerfilePath: ./bot/render-ready/Dockerfile
+    schedule: "0 */4 * * *"
+    # Secrets are set in the Render Dashboard > Environment, NEVER in this file:
+    #   CLIENT_SECRETS_JSON, YOUTUBE_TOKEN_JSON, PUBLISH_MODE=private
+    envVars:
+      - key: PUBLISH_MODE
+        value: private
+      - key: PYTHONUNBUFFERED
+        value: "1"
