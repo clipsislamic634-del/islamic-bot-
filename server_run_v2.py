@@ -16,8 +16,6 @@ What this does NOT do:
   - It never asks for, prints, or logs any secret. Secrets come ONLY from
     Render environment variables (see README_PASHTO.md). Never paste a
     secret into chat, code, or git.
-  - It never creates a fake video. If audio/background/token are missing it
-    stops with a clear error listing exactly what is missing.
   - It never uses run_local_server() — there is no browser on a server.
     Auth uses a token stored as an env var, created once via the Allow step.
 
@@ -84,13 +82,25 @@ def main():
 
     missing = []
     import glob as _glob
-    # Audio fallbacks: audio/ subfolder OR repo root (phone upload puts files at root).
-    audio_candidates = [
-        os.path.join(BOT_DIR, video["audio"]),
-        os.path.join(BOT_DIR, os.path.basename(video["audio"])),
-        os.path.join(BOT_DIR, "الناس.mp3"),
-    ] + sorted(_glob.glob(os.path.join(BOT_DIR, "*.mp3")))
-    audio = next((p for p in audio_candidates if os.path.exists(p)), audio_candidates[0])
+    # Audio: ONLY the picked surah's own audio. If it is missing, use the
+    # WHOLE Surah Nas video (title + audio) instead of mixing Nas audio
+    # under another surah's title. (Only Nas audio exists so far.)
+    def own_audio(v):
+        cands = [
+            os.path.join(BOT_DIR, v["audio"]),
+            os.path.join(BOT_DIR, os.path.basename(v["audio"])),
+        ]
+        if v["id"] == "surah-nas":
+            cands.append(os.path.join(BOT_DIR, "الناس.mp3"))
+            cands += sorted(_glob.glob(os.path.join(BOT_DIR, "*.mp3")))
+        return next((p for p in cands if os.path.exists(p)), None)
+    audio = own_audio(video)
+    if audio is None:
+        print(f"یادونه: د {video['surah']} غږ فایل لا نشته — پر ځای یې سوره ناس جوړېږي.")
+        video = VIDEOS[0]
+        audio = own_audio(video)
+    if audio is None:
+        audio = os.path.join(BOT_DIR, video["audio"])
     # Background fallbacks: assets/background.jpg, root background.jpg,
     # or the uploaded PNG as-is (file_00000000a9bc...png from phone upload).
     import glob as _glob
@@ -116,11 +126,14 @@ def main():
         print("DRY_RUN=1 — یوازې کتل وشو، هېڅ اپلوډ نه دی شوی.")
         return 0
 
-    # Build video with ffmpeg (Dockerfile installs ffmpeg).
+    # Build video with ffmpeg (GitHub Actions installs ffmpeg).
+    # The background PNG is 941px wide (odd) and libx264/yuv420p needs even
+    # dimensions, so scale to the nearest even size first (941 -> 940).
     out = os.path.join(HERE, f"output-{video['id']}.mp4")
     os.makedirs(os.path.dirname(out), exist_ok=True)
     subprocess.run([
         "ffmpeg", "-y", "-loop", "1", "-i", bg, "-i", audio,
+        "-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2",
         "-c:v", "libx264", "-tune", "stillimage", "-c:a", "aac",
         "-b:a", "192k", "-pix_fmt", "yuv420p", "-shortest", out,
     ], check=True)
