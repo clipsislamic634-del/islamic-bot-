@@ -1,5 +1,4 @@
-"""
-Render-ready server run for Islamic Clips44 — PREPARATION, NOT YET DEPLOYED.
+slamic Clips44 — PREPARATION, NOT YET DEPLOYED.
 
 What this does (one run = one slot, meant to be called by a Render Cron Job
 every 4 hours):
